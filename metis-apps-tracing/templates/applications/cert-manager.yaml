@@ -33,7 +33,7 @@ spec:
   destination:
     namespace:  cert-manager
     server: {{ .Values.spec.destination.server }}
-  project: cert-manager
+  project: {{ .Values.spec.destination.project }}
   source:
     chart: cert-manager
     repoURL:  https://charts.jetstack.io

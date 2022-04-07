@@ -35,7 +35,7 @@ spec:
     server: {{ .Values.spec.destination.server }}
   project: {{ .Values.spec.destination.project }}
   source:
-    chart: my-opentelemetry-operator
+    chart: open-telemetry/opentelemetry-operator
     repoURL:  https://open-telemetry.github.io/opentelemetry-helm-charts
     targetRevision: 0.6.6
     helm:

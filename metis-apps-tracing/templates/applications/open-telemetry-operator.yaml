@@ -33,7 +33,7 @@ spec:
   destination:
     namespace:  open-telemetry
     server: {{ .Values.spec.destination.server }}
-  project: cert-manager
+  project: {{ .Values.spec.destination.project }}
   source:
     chart: my-opentelemetry-operator
     repoURL:  https://open-telemetry.github.io/opentelemetry-helm-charts

@@ -1,0 +1,91 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo-distributed-manager-{{.Values.spec.destination.clustername}}
+  namespace: argocd
+spec:
+  syncPolicy:
+    automated:
+      prune: true # Specifies if resources should be pruned during auto-syncing ( false by default ).
+      selfHeal: true # Specifies if partial app sync should be executed when resources are changed only in target Kubernetes cluster and no git change detected ( false by default ).
+      allowEmpty: false # Allows deleting all application resources during automatic syncing ( false by default ).
+    syncOptions:     # Sync options which modifies sync behavior
+      - Validate=false # disables resource validation (equivalent to 'kubectl apply --validate=false') ( true by default ).
+      - CreateNamespace=true # Namespace Auto-Creation ensures that namespace specified as the application destination exists in the destination cluster.
+      - PrunePropagationPolicy=foreground # Supported policies are background, foreground and orphan.
+      - PruneLast=true # Allow the ability for resource pruning to happen as a final, implicit wave of a sync operation
+    retry:
+      limit: 10 # number of failed sync attempt retries; unlimited number of attempts if less than 0
+      backoff:
+        duration: 5s # the amount to back off. Default unit is seconds, but could also be a duration (e.g. "2m", "1h")
+        factor: 2 # a factor to multiply the base duration after each failed retry
+        maxDuration: 3m # the maximum amount of time allowed for the backoff strategy
+  destination:
+    namespace: {{.Values.spec.destination.project}}
+    server: {{.Values.spec.destination.server}}
+  project: {{.Values.spec.destination.project}}-{{ .Values.spec.destination.clustername }}
+  source:
+    chart: tempo-distributed
+    repoURL:  https://grafana.github.io/helm-charts
+    targetRevision: v1.8.0
+    helm:
+      values: |
+        traces:
+          jaeger:
+            thriftHttp: true
+          otlp:
+            grpc: true
+            http: true
+        config: |
+          query_frontend:
+            search:
+              max_duration: 0
+          multitenancy_enabled: false
+          search_enabled: true
+          compactor:
+            compaction:
+              block_retention: 1440h
+          distributor:
+            log_received_traces: true
+            receivers:
+              otlp:
+                protocols:
+                  http:
+                  grpc:
+          querier:
+            frontend_worker:
+              frontend_address: tempo-tempo-distributed-query-frontend-discovery:9095
+          ingester:
+            lifecycler:
+              ring:
+                replication_factor: 1
+                kvstore:
+                  store: memberlist
+              tokens_file_path: /var/tempo/tokens.json
+          memberlist:
+            abort_if_cluster_join_fails: false
+            join_members:
+              - tempo-tempo-distributed-gossip-ring
+          overrides:
+            max_search_bytes_per_trace: 0
+            per_tenant_override_config: /conf/overrides.yaml
+          server:
+            http_listen_port: 3100
+            log_level: debug
+            grpc_server_max_recv_msg_size: 4.194304e+06
+            grpc_server_max_send_msg_size: 4.194304e+06
+          storage:
+            trace:
+              backend: local                     # backend configuration to use
+              block:
+                bloom_filter_false_positive: .05 # bloom filter false positive rate.  lower values create larger filters but fewer false positives
+                index_downsample_bytes: 1000     # number of bytes per index record
+                encoding: zstd                   # block encoding/compression.  options: none, gzip, lz4-64k, lz4-256k, lz4-1M, lz4, snappy, zstd
+              wal:
+                path: /var/tempo/wal             # where to store the the wal locally
+                encoding: none                   # wal encoding/compression.  options: none, gzip, lz4-64k, lz4-256k, lz4-1M, lz4, snappy, zstd
+              local:
+                path: /var/tempo/blocks
+              pool:
+                max_workers: 100                 # the worker pool mainly drives querying, but is also used for polling the blocklist
+                queue_depth: 10000

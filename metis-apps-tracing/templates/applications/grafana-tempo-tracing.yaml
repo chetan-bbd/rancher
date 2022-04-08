@@ -23,7 +23,7 @@ spec:
   destination:
     namespace: {{.Values.spec.destination.project}}
     server: {{.Values.spec.destination.server}}
-  project: {{.Values.spec.destination.project}}-{{ .Values.spec.destination.clustername }}
+  project: {{.Values.spec.destination.project}}
   source:
     chart: tempo-distributed
     repoURL:  https://grafana.github.io/helm-charts
